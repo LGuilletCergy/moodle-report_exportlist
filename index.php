@@ -15,11 +15,20 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Displays an exportable list of students
+ * Initially developped for :
+ * Université de Cergy-Pontoise
+ * 33, boulevard du Port
+ * 95011 Cergy-Pontoise cedex
+ * FRANCE
+ *
+ * Displays an exportable list of the course users, that can be filtered by group or activity completion.
  *
  * @package   report_exportlist
- * @copyright 2016 Brice Errandonea
+ * @copyright 2016 Brice Errandonea <brice.errandonea@u-cergy.fr>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ *
+ * File : index.php
+ * Report page.
  */
 
 require_once(dirname(__FILE__) . '/../../config.php');
@@ -30,7 +39,7 @@ $group  = optional_param('group', 0, PARAM_INT);
 $completed = optional_param('completed', 0, PARAM_INT);
 $cmid  = optional_param('cmid', 0, PARAM_INT);
 $export = optional_param('export', 0, PARAM_INT);
-$params = array('id' => $id, 'group' => $group, 'completed' => $completed, 'cmid'=> $cmid, 'export' => $export);
+$params = array('id' => $id, 'group' => $group, 'completed' => $completed, 'cmid' => $cmid, 'export' => $export);
 
 $course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
 require_login($course);

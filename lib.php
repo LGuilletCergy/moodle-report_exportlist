@@ -15,11 +15,20 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Displays an exportable list of students
+ * Initially developped for :
+ * Université de Cergy-Pontoise
+ * 33, boulevard du Port
+ * 95011 Cergy-Pontoise cedex
+ * FRANCE
+ *
+ * Displays an exportable list of the course users, that can be filtered by group or activity completion.
  *
  * @package   report_exportlist
- * @copyright 2016 Brice Errandonea
+ * @copyright 2016 Brice Errandonea <brice.errandonea@u-cergy.fr>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ *
+ * File : lib.php
+ * Functions library.
  */
 
 defined('MOODLE_INTERNAL') || die;
@@ -43,7 +52,7 @@ function report_exportlist_html($id, $group, $completed, $cmid, $listtitle, $col
     </table>
     <br>
     <?php
-    //Title and column titles
+    // Title and column titles.
     echo '<h1>'.$listtitle.'</h1>';
     echo "<table id='nbactions'>";
     echo "<tr>";
@@ -52,7 +61,7 @@ function report_exportlist_html($id, $group, $completed, $cmid, $listtitle, $col
     }
     echo "</tr>";
 
-    //For each student
+    // For each user.
     foreach ($userlines as $userline) {
         echo '<tr>';
         foreach ($userline as $userdata) {
@@ -81,7 +90,7 @@ function report_exportlist_user_groups($userid, $courseid) {
              . "WHERE gm.userid = $userid AND gm.groupid = g.id AND g.courseid = $courseid";
     $usergroups = $DB->get_records_sql($sql);
     $usergroupstext = '';
-    foreach($usergroups as $usergroup) {
+    foreach ($usergroups as $usergroup) {
         $usergroupstext .= "$usergroup->name, ";
     }
     if (substr($usergroupstext, -2) == ', ') {
@@ -106,11 +115,11 @@ function report_exportlist_find_mods($courseid) {
 }
 
 function report_exportlist_utf8($array) {
-    $decoded_array = array();
+    $decodedarray = array();
     foreach ($array as $cell) {
-        $decoded_array[] = utf8_decode($cell);
+        $decodedarray[] = utf8_decode($cell);
     }
-    return $decoded_array;
+    return $decodedarray;
 }
 
 function report_exportlist_select_group($id, $group, $url) {
@@ -134,7 +143,8 @@ function report_exportlist_select_state($completed, $url) {
     $options = array(1 => get_string('completers', 'report_exportlist'),
                      2 => get_string('noncompleters', 'report_exportlist'));
     $stateurl = clone $url;
-    $select = new single_select($stateurl, 'completed', $options, $completed, array('' => get_string('nomodfilter', 'report_exportlist')));
+    $select = new single_select($stateurl, 'completed', $options, $completed,
+                                array('' => get_string('nomodfilter', 'report_exportlist')));
     $select->label = get_string('filter').'&nbsp;';
     $html = html_writer::start_tag('div');
     $html .= $OUTPUT->render($select);

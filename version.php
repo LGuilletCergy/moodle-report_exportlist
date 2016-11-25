@@ -15,11 +15,20 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * report_exportlist version information.
+ * Initially developped for :
+ * Université de Cergy-Pontoise
+ * 33, boulevard du Port
+ * 95011 Cergy-Pontoise cedex
+ * FRANCE
+ *
+ * Displays an exportable list of the course users, that can be filtered by group or activity completion.
  *
  * @package   report_exportlist
- * @copyright 2013 Lafayette College ITS
+ * @copyright 2016 Brice Errandonea <brice.errandonea@u-cergy.fr>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ *
+ * File : version.php
+ * Version number.
  */
 
 defined('MOODLE_INTERNAL') || die;
@@ -29,4 +38,4 @@ $plugin->requires  = 2013111800;
 $plugin->cron      = 0;
 $plugin->component = 'report_exportlist';
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.2';
+$plugin->release   = '1.0';
