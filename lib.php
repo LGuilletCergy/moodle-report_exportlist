@@ -33,49 +33,61 @@
 
 defined('MOODLE_INTERNAL') || die;
 
-function report_exportlist_userlines($userlist, $params, $suspended, $coursecontext) {
+/**
+ * Prepares a line of data for a given user
+ * @global object $COURSE
+ * @global object $DB
+ * @param object $user
+ * @param array of int $params
+ * @param boolean $suspended
+ * @param object $coursecontext
+ * @return array of strings
+ */
+function report_exportlist_userline($user, $params, $suspended, $coursecontext) {
     global $COURSE, $DB;
-    $userlines = array();
-    foreach ($userlist as $user) {
-        if (in_array($user->id, $suspended)) {
-            continue;
-        }
-        if ($params['role']) {
-            $goodrole = $DB->record_exists('role_assignments',
-                    array('roleid' => $params['role'], 'contextid' => $coursecontext->id, 'userid' => $user->id));
-            if (!$goodrole) {
-                continue;
-            }
-        }
-        if ($params['completed'] && $params['cmid']) {
-            $completion = $DB->get_record('course_modules_completion', array('coursemoduleid' => $params['cmid'],
-                                                                             'userid' => $user->id,
-                                                                             'completionstate' => 1));
-            if ($completion && ($params['completed'] == 2)) {
-                continue;
-            }
-            if ((!$completion) && ($params['completed'] == 1)) {
-                continue;
-            }
-        }
-        if (!isset($user->idnumber)) {
-            $user->idnumber = '';
-        }
-        $userrolestext = report_exportlist_user_roles($user->id, $coursecontext);
-        $usergroupstext = report_exportlist_user_groups($user->id, $COURSE->id);
-        $userlastaccess = $DB->get_record('user_lastaccess', array('userid' => $user->id, 'courseid' => $COURSE->id));
-        if ($userlastaccess) {
-            $lastaccesstext = date('Y/m/d H:i:s', $userlastaccess->timeaccess);
-        } else {
-            $lastaccesstext = get_string('never');
-        }
-        $userline = array($user->idnumber, $user->lastname, $user->firstname, $user->email, $lastaccesstext, $userrolestext, $usergroupstext);
-        $userlines[] = $userline;
+    if (in_array($user->id, $suspended)) {
+        return null;
     }
-    return $userlines;
+    if ($params['role']) {
+        $goodrole = $DB->record_exists('role_assignments',
+                array('roleid' => $params['role'], 'contextid' => $coursecontext->id, 'userid' => $user->id));
+        if (!$goodrole) {
+            return null;
+        }
+    }
+    if ($params['completed'] && $params['cmid']) {
+        $completion = $DB->get_record('course_modules_completion', array('coursemoduleid' => $params['cmid'],
+                                                                         'userid' => $user->id,
+                                                                         'completionstate' => 1));
+        if ($completion && ($params['completed'] == 2)) {
+            return null;
+        }
+        if ((!$completion) && ($params['completed'] == 1)) {
+            return null;
+        }
+    }
+    if (!isset($user->idnumber)) {
+        $user->idnumber = '';
+    }
+    $userrolestext = report_exportlist_user_roles($user->id, $coursecontext);
+    $usergroupstext = report_exportlist_user_groups($user->id, $COURSE->id);
+    $userlastaccess = $DB->get_record('user_lastaccess', array('userid' => $user->id, 'courseid' => $COURSE->id));
+    if ($userlastaccess) {
+        $lastaccesstext = date('Y/m/d H:i:s', $userlastaccess->timeaccess);
+    } else {
+        $lastaccesstext = get_string('never');
+    }
+    $userline = array($user->idnumber, $user->lastname, $user->firstname, $user->email, $lastaccesstext, $userrolestext, $usergroupstext);
+    return $userline;
 }
 
-
+/**
+ * Displays the filter selectors above the main table.
+ * @global object $COURSE
+ * @global object $PAGE
+ * @param object $coursecontext
+ * @param array of int $params
+ */
 function report_exportlist_selectors($coursecontext, $params) {
     global $COURSE, $PAGE;
     echo '<table><tr>';
@@ -90,6 +102,11 @@ function report_exportlist_selectors($coursecontext, $params) {
     echo '</tr></table><br>';
 }
 
+/**
+ * Displays the list of filtered users in this course.
+ * @param array $columntitles
+ * @param array $userlines
+ */
 function report_exportlist_maintable($columntitles, $userlines) {
     echo "<table id='nbactions'>";
     echo "<tr>";
@@ -107,6 +124,10 @@ function report_exportlist_maintable($columntitles, $userlines) {
     echo "</table>";
 }
 
+/**
+ * Displays the export button.
+ * @global object $COURSE
+ */
 function report_exportlist_exportbutton() {
     global $COURSE;
     ?>
@@ -119,6 +140,15 @@ function report_exportlist_exportbutton() {
     <?php
 }
 
+/**
+ * Displays the report page (if html output).
+ * @global object $OUTPUT
+ * @param object $coursecontext
+ * @param array $params
+ * @param string $listtitle
+ * @param array of strings $columntitles
+ * @param array of arrays of strings $userlines
+ */
 function report_exportlist_html($coursecontext, $params, $listtitle, $columntitles, $userlines) {
     global $OUTPUT;
     echo $OUTPUT->header();
@@ -129,6 +159,13 @@ function report_exportlist_html($coursecontext, $params, $listtitle, $columntitl
     echo $OUTPUT->footer();
 }
 
+/**
+ * List the names of this user's groups in this course.
+ * @global object $DB
+ * @param int $userid
+ * @param int $courseid
+ * @return string
+ */
 function report_exportlist_user_groups($userid, $courseid) {
     global $DB;
     $sql = "SELECT g.name "
@@ -164,6 +201,12 @@ function report_exportlist_user_roles($userid, $coursecontext) {
     return $userrolestext;
 }
 
+/**
+ * Builds a list of this course's modules names.
+ * @global object $DB
+ * @param int $courseid
+ * @return array of strings
+ */
 function report_exportlist_find_mods($courseid) {
     global $DB;
     $modoptions = array();
@@ -179,6 +222,11 @@ function report_exportlist_find_mods($courseid) {
     return $modoptions;
 }
 
+/**
+ * Apply utf8_decode to all the cells of an array.
+ * @param array of strings $array
+ * @return array of strings
+ */
 function report_exportlist_utf8($array) {
     $decodedarray = array();
     foreach ($array as $cell) {
@@ -187,6 +235,14 @@ function report_exportlist_utf8($array) {
     return $decodedarray;
 }
 
+/**
+ * Group selector.
+ * @global object $OUTPUT
+ * @param int $id
+ * @param int $group id of the currently selected group.
+ * @param object $url
+ * @return html string
+ */
 function report_exportlist_select_group($id, $group, $url) {
     global $OUTPUT;
     $groupsfromdb = groups_get_all_groups($id);
@@ -203,6 +259,14 @@ function report_exportlist_select_group($id, $group, $url) {
     return $html;
 }
 
+/**
+ * Role selector.
+ * @global object $OUTPUT
+ * @param int $role id of the currently selected role
+ * @param object $coursecontext
+ * @param object $url
+ * @return html string
+ */
 function report_exportlist_select_role($role, $coursecontext, $url) {
     global $OUTPUT;
     $courseroles = get_roles_used_in_context($coursecontext);
@@ -219,6 +283,13 @@ function report_exportlist_select_role($role, $coursecontext, $url) {
     return $html;
 }
 
+/**
+ * Module completion state selector.
+ * @global object $OUTPUT
+ * @param boolean $completed The currently selected completion state.
+ * @param object $url
+ * @return html string
+ */
 function report_exportlist_select_state($completed, $url) {
     global $OUTPUT;
     $options = array(1 => get_string('completers', 'report_exportlist'),
@@ -233,6 +304,14 @@ function report_exportlist_select_state($completed, $url) {
     return $html;
 }
 
+/**
+ * To select the module the completion of which will be checked
+ * @global object $OUTPUT
+ * @param int $id course id
+ * @param int $cmid id of the currently selected course module
+ * @param object $url
+ * @return html string
+ */
 function report_exportlist_select_mod($id, $cmid, $url) {
     global $OUTPUT;
     $modoptions = report_exportlist_find_mods($id);
@@ -245,6 +324,14 @@ function report_exportlist_select_mod($id, $cmid, $url) {
     return $html;
 }
 
+/**
+ * Serves a CSV file with the report's data.
+ * @global object $CFG
+ * @param string $listtitle
+ * @param object $course
+ * @param array of strings $columntitles
+ * @param array of arrays of strings $userlines
+ */
 function report_exportlist_csv($listtitle, $course, $columntitles, $userlines) {
     global $CFG;
     require_once($CFG->libdir . '/csvlib.class.php');

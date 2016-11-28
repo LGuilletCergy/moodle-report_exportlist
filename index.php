@@ -68,7 +68,13 @@ $PAGE->set_heading($course->fullname);
 $listtitle = get_string('studentslist', 'report_exportlist');
 $columntitles = array(get_string('studentnumber', 'report_exportlist'), get_string('lastname'),
                       get_string('firstname'), get_string('email'), get_string('lastcourseaccess'), get_string('roles'), get_string('groups'));
-$userlines = report_exportlist_userlines($userlist, $params, $suspended, $coursecontext);
+$userlines = array();
+foreach ($userlist as $user) {
+    $userline = report_exportlist_userline($user, $params, $suspended, $coursecontext);
+    if ($userline) {
+        $userlines[] = $userline;
+    }
+}
 
 // Output.
 if ($export) {
