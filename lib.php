@@ -33,35 +33,70 @@
 
 defined('MOODLE_INTERNAL') || die;
 
-function report_exportlist_html($id, $group, $completed, $cmid, $listtitle, $columntitles, $userlines) {
-    global $COURSE, $OUTPUT, $PAGE;
-    echo $OUTPUT->header();
-    ?>
-    <table>
-        <tr>
-            <?php
-            echo '<td>'.report_exportlist_select_group($id, $group, $PAGE->url).'</td>';
-            if ($COURSE->enablecompletion) {
-                echo '<td>'.report_exportlist_select_state($completed, $PAGE->url).'</td>';
-                if ($completed) {
-                    echo '<td>'.report_exportlist_select_mod($id, $cmid, $PAGE->url).'</td>';
-                }
+function report_exportlist_userlines($userlist, $params, $suspended, $coursecontext) {
+    global $COURSE, $DB;
+    $userlines = array();
+    foreach ($userlist as $user) {
+        if (in_array($user->id, $suspended)) {
+            continue;
+        }
+        if ($params['role']) {
+            $goodrole = $DB->record_exists('role_assignments',
+                    array('roleid' => $params['role'], 'contextid' => $coursecontext->id, 'userid' => $user->id));
+            if (!$goodrole) {
+                continue;
             }
-            ?>
-        </tr>
-    </table>
-    <br>
-    <?php
-    // Title and column titles.
-    echo '<h1>'.$listtitle.'</h1>';
+        }
+        if ($params['completed'] && $params['cmid']) {
+            $completion = $DB->get_record('course_modules_completion', array('coursemoduleid' => $params['cmid'],
+                                                                             'userid' => $user->id,
+                                                                             'completionstate' => 1));
+            if ($completion && ($params['completed'] == 2)) {
+                continue;
+            }
+            if ((!$completion) && ($params['completed'] == 1)) {
+                continue;
+            }
+        }
+        if (!isset($user->idnumber)) {
+            $user->idnumber = '';
+        }
+        $userrolestext = report_exportlist_user_roles($user->id, $coursecontext);
+        $usergroupstext = report_exportlist_user_groups($user->id, $COURSE->id);
+        $userlastaccess = $DB->get_record('user_lastaccess', array('userid' => $user->id, 'courseid' => $COURSE->id));
+        if ($userlastaccess) {
+            $lastaccesstext = date('Y/m/d H:i:s', $userlastaccess->timeaccess);
+        } else {
+            $lastaccesstext = get_string('never');
+        }
+        $userline = array($user->idnumber, $user->lastname, $user->firstname, $user->email, $lastaccesstext, $userrolestext, $usergroupstext);
+        $userlines[] = $userline;
+    }
+    return $userlines;
+}
+
+
+function report_exportlist_selectors($coursecontext, $params) {
+    global $COURSE, $PAGE;
+    echo '<table><tr>';
+    echo '<td>'.report_exportlist_select_group($params['id'], $params['group'], $PAGE->url).'</td>';
+    echo '<td>'.report_exportlist_select_role($params['role'], $coursecontext, $PAGE->url).'</td>';
+    if ($COURSE->enablecompletion) {
+    echo '<td>'.report_exportlist_select_state($params['completed'], $PAGE->url).'</td>';
+        if ($params['completed']) {
+            echo '<td>'.report_exportlist_select_mod($params['id'], $params['cmid'], $PAGE->url).'</td>';
+        }
+    }
+    echo '</tr></table><br>';
+}
+
+function report_exportlist_maintable($columntitles, $userlines) {
     echo "<table id='nbactions'>";
     echo "<tr>";
     foreach ($columntitles as $columntitle) {
         echo "<th>$columntitle</th>";
     }
     echo "</tr>";
-
-    // For each user.
     foreach ($userlines as $userline) {
         echo '<tr>';
         foreach ($userline as $userdata) {
@@ -70,16 +105,27 @@ function report_exportlist_html($id, $group, $completed, $cmid, $listtitle, $col
         echo '</tr>';
     }
     echo "</table>";
+}
+
+function report_exportlist_exportbutton() {
+    global $COURSE;
     ?>
     <br>
-    <p style="text-align: center;">
-        <a href='<?php echo "index.php?id=$COURSE->id&export=1"; ?>'>
-            <button>
-                <?php echo get_string('csvexport', 'report_exportlist'); ?>
-            </button>
-        </a>
-    </p>
+    <form style="text-align:center;" method="POST" action="index.php">
+    <input type="hidden" name="id" value="<?php echo $COURSE->id; ?>">
+    <input type="hidden" name="export" value="1">
+    <input type="submit" value="<?php echo get_string('csvexport', 'report_exportlist'); ?>">
+    </form>
     <?php
+}
+
+function report_exportlist_html($coursecontext, $params, $listtitle, $columntitles, $userlines) {
+    global $OUTPUT;
+    echo $OUTPUT->header();
+    report_exportlist_selectors($coursecontext, $params);
+    echo '<h1>'.$listtitle.'</h1>';
+    report_exportlist_maintable($columntitles, $userlines);
+    report_exportlist_exportbutton();
     echo $OUTPUT->footer();
 }
 
@@ -97,6 +143,25 @@ function report_exportlist_user_groups($userid, $courseid) {
         $usergroupstext = substr($usergroupstext, 0, -2);
     }
     return $usergroupstext;
+}
+
+/**
+ * Returns the user's roles in this context.
+ * @param int $userid
+ * @param object $coursecontext
+ * @return string
+ */
+function report_exportlist_user_roles($userid, $coursecontext) {
+    $userroles = get_user_roles($coursecontext, $userid);
+    $userrolestext = '';
+    foreach($userroles as $userrole) {
+        $rolename = role_get_name($userrole, $coursecontext);
+        $userrolestext .= "$rolename, ";
+    }
+    if (substr($userrolestext, -2) == ', ') {
+        $userrolestext = substr($userrolestext, 0, -2);
+    }
+    return $userrolestext;
 }
 
 function report_exportlist_find_mods($courseid) {
@@ -138,6 +203,22 @@ function report_exportlist_select_group($id, $group, $url) {
     return $html;
 }
 
+function report_exportlist_select_role($role, $coursecontext, $url) {
+    global $OUTPUT;
+    $courseroles = get_roles_used_in_context($coursecontext);
+    $options = array();
+    foreach ($courseroles as $courserole) {
+        $options[$courserole->id] = role_get_name($courserole, $coursecontext);
+    }
+    $roleurl = clone $url;
+    $select = new single_select($roleurl, 'role', $options, $role, array('' => get_string('allusers', 'report_exportlist')));
+    $select->label = get_string('role').'&nbsp;';
+    $html = html_writer::start_tag('div');
+    $html .= $OUTPUT->render($select);
+    $html .= html_writer::end_tag('div');
+    return $html;
+}
+
 function report_exportlist_select_state($completed, $url) {
     global $OUTPUT;
     $options = array(1 => get_string('completers', 'report_exportlist'),
@@ -171,8 +252,8 @@ function report_exportlist_csv($listtitle, $course, $columntitles, $userlines) {
     $csvexporter->set_filename($listtitle.' '.$course->shortname);
     $title = array(utf8_decode($listtitle.' '.$course->fullname));
     $csvexporter->add_data($title);
-    $columntitles = report_exportlist_utf8($columntitles);
-    $csvexporter->add_data($columntitles);
+    $decodedcolumntitles = report_exportlist_utf8($columntitles);
+    $csvexporter->add_data($decodedcolumntitles);
     foreach ($userlines as $userline) {
         $userline = report_exportlist_utf8($userline);
         $csvexporter->add_data($userline);

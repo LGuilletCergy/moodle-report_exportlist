@@ -34,12 +34,14 @@
 require_once(dirname(__FILE__) . '/../../config.php');
 require_once('lib.php');
 
-$id     = required_param('id', PARAM_INT);
+$id = required_param('id', PARAM_INT);
+$role = optional_param('role', 0, PARAM_INT);
 $group  = optional_param('group', 0, PARAM_INT);
 $completed = optional_param('completed', 0, PARAM_INT);
 $cmid  = optional_param('cmid', 0, PARAM_INT);
 $export = optional_param('export', 0, PARAM_INT);
-$params = array('id' => $id, 'group' => $group, 'completed' => $completed, 'cmid' => $cmid, 'export' => $export);
+$params = array('id' => $id, 'role' => $role, 'group' => $group,
+                'completed' => $completed, 'cmid' => $cmid, 'export' => $export);
 
 $course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
 require_login($course);
@@ -65,44 +67,12 @@ $PAGE->set_heading($course->fullname);
 // Prepare data.
 $listtitle = get_string('studentslist', 'report_exportlist');
 $columntitles = array(get_string('studentnumber', 'report_exportlist'), get_string('lastname'),
-                      get_string('firstname'), get_string('email'), get_string('lastcourseaccess'), get_string('groups'));
-$users = Array();
-$tableau = Array();
-$mini = Array();
-$maxi = Array();
-$userlines = array();
+                      get_string('firstname'), get_string('email'), get_string('lastcourseaccess'), get_string('roles'), get_string('groups'));
+$userlines = report_exportlist_userlines($userlist, $params, $suspended, $coursecontext);
 
-foreach ($userlist as $user) {
-    if (in_array($user->id, $suspended)) {
-        continue;
-    }
-    if ($completed && $cmid) {
-        $completion = $DB->get_record('course_modules_completion', array('coursemoduleid' => $cmid,
-                                                                         'userid' => $user->id,
-                                                                         'completionstate' => 1));
-        if ($completion && ($completed == 2)) {
-            continue;
-        }
-        if ((!$completion) && ($completed == 1)) {
-            continue;
-        }
-    }
-    if (!isset($user->idnumber)) {
-        $user->idnumber = '';
-    }
-    $usergroupstext = report_exportlist_user_groups($user->id, $course->id);
-    $userlastaccess = $DB->get_record('user_lastaccess', array('userid' => $user->id, 'courseid' => $course->id));
-    if ($userlastaccess) {
-        $lastaccesstext = date('Y/m/d H:i:s', $userlastaccess->timeaccess);
-    } else {
-        $lastaccesstext = get_string('never');
-    }
-    $userline = array($user->idnumber, $user->lastname, $user->firstname, $user->email, $lastaccesstext, $usergroupstext);
-    $userlines[] = $userline;
-}
-
+// Output.
 if ($export) {
     report_exportlist_csv($listtitle, $course, $columntitles, $userlines);
 } else {
-    report_exportlist_html($id, $group, $completed, $cmid, $listtitle, $columntitles, $userlines);
+    report_exportlist_html($coursecontext, $params, $listtitle, $columntitles, $userlines);
 }
