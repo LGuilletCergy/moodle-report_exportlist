@@ -57,20 +57,22 @@ $coursecontext = context_course::instance($course->id);
 require_capability('report/exportlist:view', $coursecontext);
 
 // Get users.
-$userlist = get_enrolled_users($coursecontext, '', $group, user_picture::fields('u', null, 0, 0, true));
+$userlist = get_enrolled_users($coursecontext, '', $group);
 $suspended = get_suspended_userids($coursecontext);
 
 // Finish setting up page.
-$PAGE->set_title($course->shortname .': '. get_string('exportlist' , 'report_exportlist'));
+$title = $course->shortname .': '. get_string('exportlist' , 'report_exportlist');
+$PAGE->set_title($title);
 $PAGE->set_heading($course->fullname);
 
 // Prepare data.
 $listtitle = get_string('studentslist', 'report_exportlist');
 $columntitles = array(get_string('studentnumber', 'report_exportlist'), get_string('lastname'),
-                      get_string('firstname'), get_string('email'), get_string('lastcourseaccess'), get_string('roles'), get_string('groups'));
+                      get_string('firstname'), get_string('email'), get_string('lastcourseaccess'),
+                      get_string('roles'), get_string('groups'));
 $userlines = array();
 foreach ($userlist as $user) {
-    $userline = report_exportlist_userline($user, $params, $suspended, $coursecontext);
+    $userline = report_exportlist_userline($user, $suspended, $coursecontext);
     if ($userline) {
         $userlines[] = $userline;
     }
@@ -78,7 +80,8 @@ foreach ($userlist as $user) {
 
 // Output.
 if ($export) {
-    report_exportlist_csv($listtitle, $course, $columntitles, $userlines);
+    $filtersline = report_exportlist_filtersline($coursecontext);
+    report_exportlist_csv($listtitle, $filtersline, $columntitles, $userlines);
 } else {
-    report_exportlist_html($coursecontext, $params, $listtitle, $columntitles, $userlines);
+    report_exportlist_html($coursecontext, $listtitle, $columntitles, $userlines);
 }

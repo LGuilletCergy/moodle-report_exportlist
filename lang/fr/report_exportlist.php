@@ -46,3 +46,4 @@ $string['noncompleters'] = 'Afficher les utilisateurs qui n\'ont pas achevé ce 
 $string['choosemod'] = 'Choisissez un module';
 $string['csvexport'] = 'Exporter vers un fichier CSV';
 $string['mod'] = 'Module';
+$string['appliedfilters'] = 'Filtres appliqués';
