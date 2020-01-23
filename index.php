@@ -86,9 +86,9 @@ foreach ($userlist as $user) {
 
     // LAURENTHACKED. Utilisation du timestamp de config.php.
 
-    if ($role_assignments->timemodified < $CFG->currenttermregistrationstart) {
-        continue;
-    }
+//    if ($role_assignments->timemodified < $CFG->currenttermregistrationstart) {
+//        continue;
+//    }
     $userline = report_exportlist_userline($user, $suspended, $coursecontext);
     if ($userline) {
         $userlines[] = $userline;
