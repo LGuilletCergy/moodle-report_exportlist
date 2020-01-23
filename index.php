@@ -46,9 +46,6 @@ $params = array('id' => $id, 'role' => $role, 'group' => $group,
 $course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
 require_login($course);
 
-// GEt enrol method
-$enrol = $DB->get_record('enrol', array('courseid' => $id, 'enrol' => 'self'));
-
 // Setup page.
 $PAGE->set_url('/report/exportlist/index.php', $params);
 $PAGE->set_pagelayout('report');
@@ -75,17 +72,21 @@ $columntitles = array(get_string('studentnumber', 'report_exportlist'), get_stri
                       get_string('roles'), get_string('groups'));
 $userlines = array();
 
+$studentrole = $DB->get_record('role', array('shortname' => 'student'));
+
 foreach ($userlist as $user) {
 
     $userenrolment = $DB->get_record('user_enrolments', array('userid' => $user->id, 'enrolid' => $enrol->id));
 
-    if (!$userenrolment) {
+    $role_assignments = $DB->get_record('role_assignments', array('userid' => $user->id, 'roleid' => $studentrole->id));
+
+    if (!$role_assignments) {
         continue;
     }
 
     // LAURENTHACKED. Utilisation du timestamp de config.php.
 
-    if ($userenrolment->timecreated < $CFG->currenttermregistrationstart) {
+    if ($role_assignments->timemodified < $CFG->currenttermregistrationstart) {
         continue;
     }
     $userline = report_exportlist_userline($user, $suspended, $coursecontext);
